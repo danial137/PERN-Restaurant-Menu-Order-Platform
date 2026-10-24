@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  STAFF
+  ADMIN
+}
+
+enum OrderStatus {
+  PLACED
+  ACCEPTED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+}
+
+enum VoucherStatus {
+  ISSUED
+  REDEEMED
+  VOID
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  createdAt    DateTime @default(now())
+  orders       Order[]
+  phoneNumber  String?
+  smsOptIn     Boolean  @default(false)
+  telegramDemoLinked Boolean @default(false)
+  deliveries   NotificationDelivery[]
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  position  Int       @default(0)
+  active    Boolean   @default(true)
+  products  Product[]
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  description String      @default("")
+  priceToman  Int
+  stock       Int         @default(0)
+  active      Boolean     @default(true)
+  imageUrl    String?
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  @@index([categoryId, active])
+}
+
+model RestaurantTable {
+  id        String   @id @default(cuid())
+  label     String   @unique
+  qrKey     String   @unique
+  active    Boolean  @default(true)
+  orders    Order[]
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  number          String        @unique
+  customerId      String
+  customer        User          @relation(fields: [customerId], references: [id])
+  tableId         String?
+  table           RestaurantTable? @relation(fields: [tableId], references: [id])
+  type            OrderType     @default(TAKEAWAY)
+  status          OrderStatus   @default(PLACED)
+  paymentStatus   PaymentStatus @default(UNPAID)
+  inventoryState  InventoryState @default(COMMITTED)
+  reservedUntil   DateTime?
+  notes           String        @default("")
+  subtotalToman   Int
+  discountToman   Int           @default(0)
+  taxToman        Int           @default(0)
+  totalToman      Int
+  requestId       String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  items           OrderItem[]
+  events          OrderEvent[]
+  invoice         Invoice?
+  voucher         PickupVoucher?
+  paymentAttempts PaymentAttempt[]
+  kitchenTicket   KitchenTicket?
+  outboxEvents    OutboxEvent[]
+  @@unique([customerId, requestId])
+  @@index([customerId, createdAt])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product @relation(fields: [productId], references: [id])
+  nameSnapshot  String
+  unitPriceToman Int
+  quantity      Int
+  lineTotalToman Int
+}
+
+model OrderEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String      @default("")
+  createdAt DateTime    @default(now())
+  @@index([orderId, createdAt])
+}
+
+model Invoice {
+  id          String    @id @default(cuid())
+  orderId     String    @unique
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  number      String    @unique
+  issuedAt    DateTime  @default(now())
+}
+
+model PickupVoucher {
+  id         String        @id @default(cuid())
+  orderId    String        @unique
+  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tokenHash  String        @unique
+  status     VoucherStatus @default(ISSUED)
+  expiresAt  DateTime
+  redeemedAt DateTime?
+  createdAt  DateTime      @default(now())
+}
+
+// Phase 2: additive models; existing tables and historical invoice IDs remain intact.
+enum InventoryState {
+  HELD
+  COMMITTED
+  RELEASED
+}
+
+enum PaymentAttemptStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+enum OutboxEventType {
+  PAYMENT_SUCCEEDED
+  ORDER_READY
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+enum KitchenTicketStatus {
+  QUEUED
+  COOKING
+  READY
+  FINISHED
+}
+
+enum NotificationChannel {
+  SMS
+  TELEGRAM
+}
+
+model PaymentAttempt {
+  id          String               @id @default(cuid())
+  orderId     String
+  order       Order                @relation(fields: [orderId], references: [id])
+  requestKey  String
+  provider    String               @default("MOCK")
+  status      PaymentAttemptStatus @default(PENDING)
+  amountToman Int
+  confirmedAt DateTime?
+  createdAt   DateTime             @default(now())
+  @@unique([orderId, requestKey])
+  @@index([orderId, status])
+}
+
+model KitchenTicket {
+  id            String              @id @default(cuid())
+  orderId       String              @unique
+  order         Order               @relation(fields: [orderId], references: [id])
+  status        KitchenTicketStatus @default(QUEUED)
+  version       Int                 @default(0)
+  estimatedMin  Int
+  deadlineAt    DateTime
+  startedAt     DateTime?
+  readyAt       DateTime?
+  createdAt     DateTime            @default(now())
+  @@index([status, deadlineAt])
+}
+
+model OutboxEvent {
+  id          String          @id @default(cuid())
+  orderId     String
+  order       Order           @relation(fields: [orderId], references: [id])
+  type        OutboxEventType
+  status      OutboxStatus    @default(PENDING)
+  attempts    Int             @default(0)
+  availableAt DateTime        @default(now())
+  lockedUntil DateTime?
+  createdAt   DateTime        @default(now())
+  completedAt DateTime?
+  deliveries  NotificationDelivery[]
+  @@unique([orderId, type])
+  @@index([status, availableAt])
+}
+
+model NotificationDelivery {
+  id        String              @id @default(cuid())
+  eventId   String
+  event     OutboxEvent         @relation(fields: [eventId], references: [id])
+  userId    String
+  user      User                @relation(fields: [userId], references: [id])
+  channel   NotificationChannel
+  body      String
+  sentAt    DateTime            @default(now())
+  @@unique([eventId, channel])
+  @@index([userId, sentAt])
+}

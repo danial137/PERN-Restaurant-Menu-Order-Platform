@@ -1,0 +1,7 @@
+import{Link}from 'react-router-dom';
+import{ArrowLeft,Clock3,ReceiptText}from 'lucide-react';
+import{api}from '../api/client';
+import type{Order}from '../api/types';
+import{SectionTitle,Empty,money,STATUS,date,Notice}from '../components/common';
+import{useRemote}from '../hooks/useRemote';
+export function OrdersPage(){const{value,loading,error}=useRemote(()=>api<{orders:Order[]}>('/orders'),[]);return <section className="wrap padded"><SectionTitle eyebrow="MY ORDERS / HISTORY" title="سفارش‌های من" subtitle="از ثبت سفارش تا آخرین لقمه، همه‌چی اینجاست."/>{error&&<Notice>{error}</Notice>}{loading&&<p>در حال دریافت سفارش‌ها…</p>}{value?.orders.length===0&&<Empty title="سفارشی نداری" description="اولین غذای خوشمزه‌ات منتظرته!"/>}<div className="order-cards">{value?.orders.map(order=><Link to={`/orders/${order.id}`} className="order-card" key={order.id}><div><span className="eyebrow">{order.number}</span><h3>{order.items.map(x=>x.nameSnapshot).join('، ')}</h3><small><Clock3 size={14}/>{date(order.createdAt)}</small></div><div className="order-card-meta"><span className={`status-pill st-${order.status.toLowerCase()}`}>{STATUS[order.status]}</span><strong>{money(order.totalToman)}</strong><span className="inline-link">جزئیات <ArrowLeft size={14}/></span></div></Link>)}</div><div className="hint"><ReceiptText size={18}/> فاکتور و QR ووچر هر سفارش داخل صفحه جزئیات قرار دارد.</div></section>}

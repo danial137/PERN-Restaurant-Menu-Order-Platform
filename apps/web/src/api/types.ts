@@ -1,0 +1,9 @@
+export type Role = 'CUSTOMER'|'STAFF'|'ADMIN';
+export type Status='PLACED'|'ACCEPTED'|'PREPARING'|'READY'|'COMPLETED'|'CANCELLED';
+export type User={id:string;name:string;email:string;role:Role};
+export type Category={id:string;name:string;slug:string;position:number;active:boolean};
+export type Product={id:string;name:string;slug:string;description:string;priceToman:number;stock:number;active:boolean;categoryId:string;imageUrl?:string|null};
+export type OrderItem={id:string;productId:string;nameSnapshot:string;unitPriceToman:number;quantity:number;lineTotalToman:number};
+export type OrderEvent={id:string;status:Status;createdAt:string;note:string};
+export type Order={id:string;number:string;type:'DINE_IN'|'TAKEAWAY';status:Status;paymentStatus:'PAID'|'UNPAID';inventoryState?:'HELD'|'COMMITTED'|'RELEASED';reservedUntil?:string|null;totalToman:number;subtotalToman:number;taxToman:number;discountToman:number;createdAt:string;notes:string;items:OrderItem[];events?:OrderEvent[];invoice?:{number:string;issuedAt:string}|null;voucher?:{status:string;expiresAt:string}|null;table?:{label:string}|null};
+export type Table={id:string;label:string;qrKey:string;url:string;qr:string};

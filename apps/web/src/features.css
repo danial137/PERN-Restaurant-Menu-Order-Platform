@@ -1,0 +1,31 @@
+/* Phase 2 feature styles — isolated from baseline visual system. */
+.mock-payment { display:grid; gap:14px; }
+.mock-payment h3, .notification-settings h3 { display:flex; gap:10px; align-items:center; margin:0; }
+.mock-payment .eyebrow, .kds-meta .eyebrow { display:flex; align-items:center; gap:9px; }
+.mock-payment p { margin:0; font-size:13px; }
+.demo-disclaimer { background:#faf0dd; border:1px dashed #bca77a; padding:10px; border-radius:10px; }
+.notification-columns { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:20px; }
+.notification-settings .check-label { gap:10px; }
+.notification-settings input[type=checkbox] { width:17px;height:17px; }
+.demo-inbox { min-width:0; }
+.inbox-item { border-bottom:1px dashed #ddd; padding:16px 0; overflow-wrap:anywhere; }
+.inbox-item:last-child { border-bottom:0; }
+.inbox-item p { margin:10px 0 0; font-size:12px; }
+.inbox-item small { color:#777; }
+.kitchen-page .section-title { margin:16px 0 22px; }
+.kds-meta { display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px; }
+.kds-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:25px; }
+.kds-metrics>div { display:grid;gap:5px;text-align:center;background:#fff;border:1px solid #e4e1db;border-radius:12px;padding:20px; }
+.kds-metrics b { font-size:28px; }.kds-metrics span { font-size:12px;color:#666; }
+.kds-board { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:15px; }
+.kds-lane { background:#ebe9e3;border-radius:16px;padding:14px;min-width:0; }
+.kds-lane>h3 { font-size:17px;margin:5px 5px 18px; }
+.kds-ticket { padding:18px;background:#fff;border:1px solid #dcd9d1;border-radius:12px;margin-bottom:12px;box-shadow:3px 4px 0 #1111; }
+.kds-ticket>.row-between { flex-wrap:wrap;gap:8px; }
+.kds-ticket strong { font-size:14px; }
+.kds-ticket ul { padding-right:22px;padding-left:0;line-height:2;font-size:13px; }
+.kds-ticket p { font-size:12px; }
+.kds-time,.kds-done { display:flex;align-items:center;gap:7px;font-size:11px;color:#5e5d57;padding:10px 0; }
+.kds-empty { padding:26px 12px;text-align:center;font-size:12px;color:#777; }
+@media(max-width:900px){.kds-board{grid-template-columns:repeat(2,minmax(0,1fr))}.notification-columns{grid-template-columns:1fr}}
+@media(max-width:600px){.kds-board{grid-template-columns:1fr}.kds-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.kds-ticket{padding:15px}}

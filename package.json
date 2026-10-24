@@ -1,0 +1,28 @@
+{
+  "name": "persian-food",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "packages/domain"
+  ],
+  "scripts": {
+    "dev": "concurrently -n API,WEB,WORKER -c green,cyan,yellow \"npm run dev -w @persian-food/api\" \"npm run dev -w @persian-food/web\" \"npm run worker -w @persian-food/api\"",
+    "dev:api": "npm run dev -w @persian-food/api",
+    "dev:web": "npm run dev -w @persian-food/web",
+    "build": "npm run build -w @persian-food/web",
+    "test": "node --test packages/domain/test/*.test.js apps/api/tests/*.test.js",
+    "db:generate": "npm run db:generate -w @persian-food/api",
+    "db:migrate": "npm run db:migrate -w @persian-food/api",
+    "db:seed": "npm run db:seed -w @persian-food/api",
+    "worker:once": "npm run worker:once -w @persian-food/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

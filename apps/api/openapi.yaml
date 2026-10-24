@@ -1,0 +1,406 @@
+openapi: 3.0.3
+info:
+  title: Persian Food API
+  version: 2.0.0-mock
+  description: REST API for the Persian Food QR restaurant app. Cookies authenticate customer/staff/admin sessions. All monetary values are integer toman.
+servers:
+  - url: http://localhost:4000
+    description: Local development
+security:
+  - cookieAuth: []
+tags:
+  - name: Auth
+  - name: Catalog
+  - name: Orders
+  - name: Admin
+  - name: Payments
+  - name: Notifications
+  - name: Kitchen
+paths:
+  /health:
+    get:
+      security: []
+      summary: API health check
+      responses:
+        '200': {description: Healthy}
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Register a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Register'}
+      responses:
+        '201': {description: Created; sets httpOnly session cookie}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Sign in and create session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: {type: string, format: email}
+                password: {type: string, format: password}
+      responses:
+        '200': {description: Authenticated}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user
+      responses:
+        '200': {description: Session is valid}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Sign out
+      responses:
+        '200': {description: Cookie cleared}
+  /api/catalog/menu:
+    get:
+      tags: [Catalog]
+      security: []
+      summary: Public categories and products
+      responses:
+        '200':
+          description: Current menu
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories: {type: array, items: {$ref: '#/components/schemas/Category'}}
+                  products: {type: array, items: {$ref: '#/components/schemas/Product'}}
+  /api/catalog/tables/{qrKey}:
+    get:
+      tags: [Catalog]
+      security: []
+      summary: Validate the scanned table QR key
+      parameters:
+        - {name: qrKey, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Valid table}
+        '404': {description: Unknown table}
+  /api/catalog/admin/products:
+    get:
+      tags: [Admin]
+      summary: List all products including inactive items (staff/admin)
+      responses:
+        '200': {description: Categories and products}
+    post:
+      tags: [Admin]
+      summary: Create product (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ProductInput'}
+      responses:
+        '201': {description: Product created}
+  /api/catalog/admin/products/{id}:
+    patch:
+      tags: [Admin]
+      summary: Update product, stock, price or availability (staff/admin)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+                description: {type: string}
+                priceToman: {type: integer}
+                stock: {type: integer}
+                active: {type: boolean}
+      responses:
+        '200': {description: Product updated}
+  /api/orders:
+    get:
+      tags: [Orders]
+      summary: Customer's orders or staff order list
+      responses:
+        '200': {description: Array of orders}
+    post:
+      tags: [Orders]
+      summary: Submit order with idempotency key; creates invoice and pickup voucher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PlaceOrder'}
+      responses:
+        '201': {description: Order created}
+        '200': {description: Idempotent replay returned existing order}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {description: Invalid payload}
+  /api/orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Read order with status history; owner or staff
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Order details}
+        '403': {description: Not owner}
+  /api/orders/{id}/voucher:
+    get:
+      tags: [Orders]
+      summary: Get customer pickup voucher and QR data URL
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Voucher payload with QR image and invoice number}
+  /api/orders/{id}/status:
+    patch:
+      tags: [Orders]
+      summary: Update order state (staff/admin); paid orders only; COMPLETED only via voucher redeem
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: {type: string, enum: [ACCEPTED, PREPARING, READY, CANCELLED]}
+      responses:
+        '200': {description: Status changed}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/orders/{id}/payment:
+    patch:
+      tags: [Orders]
+      summary: Record confirmed offline payment (staff/admin), create kitchen ticket and notification event
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Marked paid}
+  /api/orders/vouchers/redeem:
+    post:
+      tags: [Orders]
+      summary: Redeem ready pickup voucher exactly once (staff/admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: {type: string}
+      responses:
+        '200': {description: Voucher redeemed and order completed}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/admin/summary:
+    get:
+      tags: [Admin]
+      summary: Revenue and order status counts (staff/admin)
+      responses:
+        '200': {description: KPI aggregates}
+  /api/admin/tables:
+    get:
+      tags: [Admin]
+      summary: List restaurant tables with QR image data URLs
+      responses:
+        '200': {description: Tables and QR data URLs}
+    post:
+      tags: [Admin]
+      summary: Create table (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [label]
+              properties:
+                label: {type: string}
+      responses:
+        '201': {description: Created}
+  /api/payments/intents:
+    post:
+      tags: [Payments]
+      summary: Create idempotent MOCK payment intent for an order owned by the logged-in customer
+      description: Development/test only. Does NOT charge real money. Disabled when NODE_ENV is production.
+      parameters:
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [orderId]
+              properties:
+                orderId: {type: string}
+      responses:
+        '201': {description: Stable mock payment intent for this order and idempotency key}
+        '403': {description: Mock payment disabled in production}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/payments/{id}:
+    get:
+      tags: [Payments]
+      summary: Read sanitized payment status (owner or staff)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Payment status and amount}
+  /api/payments/mock/{id}/confirm:
+    post:
+      tags: [Payments]
+      summary: Simulate confirmed payment (NO real charge)
+      description: Dev/test only. Atomically marks payment paid, commits held inventory, creates kitchen ticket and outbox event. Idempotent.
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Mock confirmation accepted}
+        '403': {description: Disabled in production}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/notifications/preferences:
+    get:
+      tags: [Notifications]
+      summary: Read notification preferences of authenticated user
+      responses:
+        '200': {description: SMS opt-in and Telegram demo status}
+    patch:
+      tags: [Notifications]
+      summary: Opt into demo SMS or link simulated Telegram
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phoneNumber: {type: string, nullable: true, example: '+989121234567'}
+                smsOptIn: {type: boolean}
+                telegramDemoLinked: {type: boolean}
+      responses:
+        '200': {description: Saved preferences (MOCK only)}
+        '422': {description: Opted-in SMS requires a phone number}
+  /api/notifications/inbox:
+    get:
+      tags: [Notifications]
+      summary: List persisted MOCK delivery previews for current user
+      responses:
+        '200': {description: Sent preview messages}
+  /api/kitchen/tickets:
+    get:
+      tags: [Kitchen]
+      summary: Staff-only kitchen queue ordered by Min-Heap deadline priority
+      responses:
+        '200': {description: Tickets with order item snapshots}
+        '403': {description: Staff/admin required}
+  /api/kitchen/metrics:
+    get:
+      tags: [Kitchen]
+      summary: Staff-only counters and overdue ticket count
+      responses:
+        '200': {description: KDS metrics}
+  /api/kitchen/events:
+    get:
+      tags: [Kitchen]
+      summary: Authenticated SSE snapshot stream, 4-second DB-backed refresh
+      description: EventSource reconnects and requests a fresh snapshot; periodic GET polling is fallback. Requires persistent Node server.
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema: {type: string}
+  /api/kitchen/tickets/{id}/status:
+    patch:
+      tags: [Kitchen]
+      summary: Compare-and-set kitchen status (STAFF/ADMIN), maps to order FSM
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, expectedVersion]
+              properties:
+                status: {type: string, enum: [COOKING, READY]}
+                expectedVersion: {type: integer, minimum: 0}
+      responses:
+        '200': {description: Kitchen ticket updated}
+        '409': {$ref: '#/components/responses/Conflict'}
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: pf_session
+  responses:
+    Unauthorized:
+      description: Missing or invalid session
+    Conflict:
+      description: Business invariant or unique constraint conflict
+  schemas:
+    Register:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: {type: string, minLength: 2}
+        email: {type: string, format: email}
+        password: {type: string, minLength: 10}
+    PlaceOrder:
+      type: object
+      required: [requestId, type, items]
+      properties:
+        requestId: {type: string, format: uuid, description: One UUID per intended checkout; reuse on retry}
+        type: {type: string, enum: [DINE_IN, TAKEAWAY]}
+        tableKey: {type: string, description: Required for DINE_IN}
+        notes: {type: string, maxLength: 400}
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId: {type: string}
+              quantity: {type: integer, minimum: 1, maximum: 100}
+    Category:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        slug: {type: string}
+        position: {type: integer}
+    Product:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        description: {type: string}
+        priceToman: {type: integer, description: Integer toman}
+        stock: {type: integer}
+        active: {type: boolean}
+        categoryId: {type: string}
+    ProductInput:
+      type: object
+      required: [name, slug, categoryId, priceToman]
+      properties:
+        name: {type: string}
+        slug: {type: string}
+        description: {type: string}
+        categoryId: {type: string}
+        priceToman: {type: integer}
+        stock: {type: integer}

@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: persian_food
+      POSTGRES_PASSWORD: persian_food_dev
+      POSTGRES_DB: persian_food
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U persian_food -d persian_food"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+volumes:
+  pg_data:

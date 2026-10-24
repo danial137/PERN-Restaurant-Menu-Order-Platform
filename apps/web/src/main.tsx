@@ -1,0 +1,18 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import {BrowserRouter,Route,Routes,Navigate} from 'react-router-dom';
+import {AuthProvider} from './hooks/useAuth';
+import {CartProvider} from './hooks/useCart';
+import {Shell,Protected} from './components/common';
+import {MenuPage} from './pages/MenuPage';
+import {AuthPage} from './pages/AuthPage';
+import {CheckoutPage} from './pages/CheckoutPage';
+import {OrdersPage} from './pages/OrdersPage';
+import {OrderDetailPage,VoucherPage} from './pages/OrderDetailPage';
+import {AdminHome,AdminOrders,AdminProducts,AdminTables} from './pages/AdminPage';
+import {AboutPage} from './pages/AboutPage';
+import {KitchenPage} from './features/kitchen/KitchenPage';
+import {NotificationPreferencesPage} from './features/notifications/NotificationPreferencesPage';
+import './styles.css';
+import './features.css';
+ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserRouter><AuthProvider><CartProvider><Shell><Routes><Route path="/" element={<Navigate to="/menu" replace/>}/><Route path="/menu" element={<MenuPage/>}/><Route path="/about" element={<AboutPage/>}/><Route path="/login" element={<AuthPage/>}/><Route path="/checkout" element={<CheckoutPage/>}/><Route path="/notifications" element={<Protected><NotificationPreferencesPage/></Protected>}/><Route path="/orders" element={<Protected><OrdersPage/></Protected>}/><Route path="/orders/:id" element={<Protected><OrderDetailPage/></Protected>}/><Route path="/voucher/:token" element={<VoucherPage/>}/><Route path="/admin" element={<Protected admin><AdminHome/></Protected>}/><Route path="/admin/kitchen" element={<Protected admin><KitchenPage/></Protected>}/><Route path="/admin/orders" element={<Protected admin><AdminOrders/></Protected>}/><Route path="/admin/products" element={<Protected admin><AdminProducts/></Protected>}/><Route path="/admin/tables" element={<Protected admin><AdminTables/></Protected>}/><Route path="*" element={<div className="wrap padded">صفحه پیدا نشد.</div>}/></Routes></Shell></CartProvider></AuthProvider></BrowserRouter></React.StrictMode>);
