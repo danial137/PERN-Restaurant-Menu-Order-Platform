@@ -38,9 +38,23 @@ const spec=YAML.parse(readFileSync(new URL('../openapi.yaml',import.meta.url),'u
 app.use('/api/docs',swaggerUi.serve,swaggerUi.setup(spec,{customSiteTitle:'Persian Food API'}));
 app.use(notFound);
 app.use(errorHandler);
-const port = Number(process.env.PORT || env.API_PORT);
 
-const server = app.listen(port, '0.0.0.0', () => {
-    console.log(`Persian Food API listening on port ${port}`);
-});
+export default app;
+
+if (!process.env.VERCEL) {
+    const port = Number(process.env.PORT || env.API_PORT);
+
+    const server = app.listen(port, '0.0.0.0', () => {
+        console.log(`Persian Food API listening on port ${port}`);
+    });
+
+    for (const signal of ['SIGINT', 'SIGTERM']) {
+        process.once(signal, () => {
+            server.close(() => {
+                db.$disconnect().finally(() => process.exit(0));
+            });
+        });
+    }
+}
+
 for(const signal of ['SIGINT','SIGTERM']) process.once(signal,()=>server.close(()=>db.$disconnect().finally(()=>process.exit(0))));
